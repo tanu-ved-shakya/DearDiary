@@ -11,29 +11,7 @@ function checkStorageUsage() {
     console.log('LocalStorage used:', usedMB, 'MB');
     return usedMB;
 }
-// STATE
-let selectedDiaryColor = '#f5dcd4';
-let currentPage = 'home';
-let currentUser = null;
-let isLoginMode = true;
-let currentlyPlayingMusic = null;
-let audioPlayer = null;
-let meditationAudio = null;
-let companionShown = false;
-let typingTimer = null;
-let entryToDelete = null;
-let currentFormatting = {
-    font: 'dancing',
-    size: 18,
-    weight: 400,
-    color: '#4a2f2f'
-};
-let isDrawingMode = false;
-let drawingCanvas = null;
-let drawingCtx = null;
-let isDrawing = false;
-let lastX = 0;
-let lastY = 0;
+
 
 // EMOJI DATA
 const emojiData = {
@@ -96,7 +74,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 function initializeApp() {
     // Detect page (multi-page app)
-    currentPage =
+    appState.currentPage =
         document.getElementById('authPage') ? 'auth' :
         document.getElementById('diaryPage') ? 'diary' :
         document.getElementById('calmPage') ? 'calm' :
@@ -105,19 +83,22 @@ function initializeApp() {
         'home';
 
     const userData = localStorage.getItem('currentUser');
+
     if (userData) {
-        currentUser = JSON.parse(userData);
-        console.log('User loaded:', currentUser);
+        appState.currentUser = JSON.parse(userData);
+        console.log('User loaded:', appState.currentUser);
         updateUIForLoggedInUser();
     } else {
         console.log('No user logged in');
         updateUIForLoggedOutUser();
     }
+
     updateJournalDate();
-    
+
     // Debug check
-    console.log('App initialized. Current user:', currentUser);
+    console.log('App initialized. Current user:', appState.currentUser);
 }
+
 
 function setupEventListeners() {
     const loginForm = document.getElementById('loginForm');
@@ -170,13 +151,13 @@ function setupEventListeners() {
 
 // COMPANION
 function showCompanionWalkIn() {
-    if (companionShown) return;
+    if (appState.companionShown) return;
     const companion = document.getElementById('companion');
     if (!companion) return;
     companion.classList.add('walking-in');
     setTimeout(() => {
         companion.classList.remove('walking-in');
-        companionShown = true;
+        appState.companionShown = true;
         setTimeout(() => showCompanionMessage(currentPage), 500);
     }, 2000);
 }
@@ -248,8 +229,8 @@ function nodCompanion() {
 
 // AUTH
 function toggleAuthForm() {
-    isLoginMode = !isLoginMode;
-    if (isLoginMode) {
+    appState.isLoginMode = !appState.isLoginMode;
+    if (appState.isLoginMode) {
         document.getElementById('loginForm').style.display = 'block';
         document.getElementById('signupForm').style.display = 'none';
         document.getElementById('authTitle').textContent = 'Welcome Back';
@@ -274,7 +255,7 @@ function handleLogin(e) {
     const user = users.find(u => u.email === email && u.password === password);
     
     if (user) {
-        currentUser = { 
+        appState.currentUser = { 
             name: user.name, 
             email: user.email,
             profilePic: user.profilePic || null,
@@ -282,7 +263,7 @@ function handleLogin(e) {
             writingTime: user.writingTime || 'Evening',
             goal: user.goal || 'Daily reflection'
         };
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        localStorage.setItem('currentUser', JSON.stringify(appState.currentUser));
         updateUIForLoggedInUser();
         showToast(`Welcome back, ${user.name}!`, 'success');
         window.location.href = 'diary.html';
@@ -316,15 +297,15 @@ function handleSignup(e) {
     users.push({ name, email, password });
     localStorage.setItem('users', JSON.stringify(users));
     
-    currentUser = { name, email, profilePic: null };
-    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    appState.currentUser = { name, email, profilePic: null };
+    localStorage.setItem('currentUser', JSON.stringify(appState.currentUser));
     updateUIForLoggedInUser();
     showToast(`Welcome, ${name}!`, 'success');
     window.location.href = 'diary.html';
 }
 
 function logout() {
-    currentUser = null;
+    appState.currentUser = null;
     localStorage.removeItem('currentUser');
     updateUIForLoggedOutUser();
     showToast('Logged out successfully', 'success');
@@ -333,11 +314,11 @@ function logout() {
 
 function updateUIForLoggedInUser() {
     const container = document.getElementById('navAuthContainer');
-    if (!container || !currentUser) return;
-    const initial = currentUser.name.charAt(0).toUpperCase();
+    if (!container || !appState.currentUser) return;
+    const initial = appState.currentUser.name.charAt(0).toUpperCase();
     
-    if (currentUser.profilePic) {
-        container.innerHTML = `<div class="profile-avatar" onclick="location.href='profile.html'"><img src="${currentUser.profilePic}" alt="Profile"></div>`;
+    if (appState.currentUser.profilePic) {
+        container.innerHTML = `<div class="profile-avatar" onclick="location.href='profile.html'"><img src="${appState.currentUser.profilePic}" alt="Profile"></div>`;
     } else {
         container.innerHTML = `<div class="profile-avatar" onclick="location.href='profile.html'">${initial}</div>`;
     }
@@ -351,19 +332,19 @@ function updateUIForLoggedOutUser() {
 
 // PROFILE
 function loadProfileData() {
-    if (!currentUser) return;
-    document.getElementById('profileName').value = currentUser.name;
-    document.getElementById('profileEmail').value = currentUser.email;
-    document.getElementById('profileQuote').value = currentUser.quote || '';
-    document.getElementById('profileWritingTime').value = currentUser.writingTime || 'Evening';
-    document.getElementById('profileGoal').value = currentUser.goal || 'Daily reflection';
-    document.getElementById('profileGreeting').textContent = `Hello, ${currentUser.name}!`;
+    if (!appState.currentUser) return;
+    document.getElementById('profileName').value = appState.currentUser.name;
+    document.getElementById('profileEmail').value = appState.currentUser.email;
+    document.getElementById('profileQuote').value = appState.currentUser.quote || '';
+    document.getElementById('profileWritingTime').value = appState.currentUser.writingTime || 'Evening';
+    document.getElementById('profileGoal').value = appState.currentUser.goal || 'Daily reflection';
+    document.getElementById('profileGreeting').textContent = `Hello, ${appState.currentUser.name}!`;
     
     const picDisplay = document.getElementById('profilePicDisplay');
-    if (currentUser.profilePic) {
-        picDisplay.innerHTML = `<img src="${currentUser.profilePic}" alt="Profile">`;
+    if (appState.currentUser.profilePic) {
+        picDisplay.innerHTML = `<img src="${appState.currentUser.profilePic}" alt="Profile">`;
     } else {
-        picDisplay.textContent = currentUser.name.charAt(0).toUpperCase();
+        picDisplay.textContent = appState.currentUser.name.charAt(0).toUpperCase();
     }
 }
 
@@ -376,7 +357,7 @@ function handleProfileUpdate(e) {
     const goal = document.getElementById('profileGoal').value;
     
     const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const userIndex = users.findIndex(u => u.email === currentUser.email);
+    const userIndex = users.findIndex(u => u.email === appState.currentUser.email);
     
     if (userIndex !== -1) {
         users[userIndex].name = newName;
@@ -384,15 +365,15 @@ function handleProfileUpdate(e) {
         users[userIndex].writingTime = writingTime;
         users[userIndex].goal = goal;
         if (newPassword) users[userIndex].password = newPassword;
-        if (currentUser.profilePic) users[userIndex].profilePic = currentUser.profilePic;
+        if (appState.currentUser.profilePic) users[userIndex].profilePic = appState.currentUser.profilePic;
         
         localStorage.setItem('users', JSON.stringify(users));
         
-        currentUser.name = newName;
-        currentUser.quote = quote;
-        currentUser.writingTime = writingTime;
-        currentUser.goal = goal;
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        appState.currentUser.name = newName;
+        appState.currentUser.quote = quote;
+        appState.currentUser.writingTime = writingTime;
+        appState.currentUser.goal = goal;
+        localStorage.setItem('currentUser', JSON.stringify(appState.currentUser));
         
         updateUIForLoggedInUser();
         showToast('Profile updated!', 'success');
@@ -405,11 +386,11 @@ function handleProfilePicUpload(e) {
     if (file) {
         const reader = new FileReader();
         reader.onload = (e) => {
-            currentUser.profilePic = e.target.result;
-            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            appState.currentUser.profilePic = e.target.result;
+            localStorage.setItem('currentUser', JSON.stringify(appState.currentUser));
             
             const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const userIndex = users.findIndex(u => u.email === currentUser.email);
+            const userIndex = users.findIndex(u => u.email === appState.currentUser.email);
             if (userIndex !== -1) {
                 users[userIndex].profilePic = e.target.result;
                 localStorage.setItem('users', JSON.stringify(users));
@@ -423,478 +404,6 @@ function handleProfilePicUpload(e) {
     }
 }
 
-// DIARY
-function updateJournalDate() {
-    const dateEl = document.getElementById('journalDate');
-    const greetingEl = document.getElementById('journalGreeting');
-    if (!dateEl || !greetingEl) return;
-
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    dateEl.textContent = dateStr;
-    
-    const greetings = ["What's in your heart today?", "Welcome to your safe space", "Your thoughts matter"];
-    greetingEl.textContent = greetings[Math.floor(Math.random() * greetings.length)];
-}
-
-function switchDiaryTab(tab) {
-    const writeTab = document.getElementById('writeTab');
-    const viewTab = document.getElementById('viewTab');
-    const buttons = document.querySelectorAll('.tab-btn');
-    
-    buttons.forEach(btn => btn.classList.remove('active'));
-    
-    if (tab === 'write') {
-        writeTab.style.display = 'block';
-        viewTab.style.display = 'none';
-        buttons[0].classList.add('active');
-        updateJournalDate();
-    } else {
-        writeTab.style.display = 'none';
-        viewTab.style.display = 'block';
-        buttons[1].classList.add('active');
-        loadDiaryEntries();
-    }
-}
-
-// FORMATTING
-function changeFont() {
-    const select = document.getElementById('fontSelect');
-    const editor = document.getElementById('diaryEditor');
-    const fonts = {
-        dancing: "'Dancing Script', cursive",
-        caveat: "'Caveat', cursive",
-        indie: "'Indie Flower', cursive",
-        shadows: "'Shadows Into Light', cursive"
-    };
-    editor.style.fontFamily = fonts[select.value];
-    currentFormatting.font = select.value;
-}
-
-function changeFontSize() {
-    const slider = document.getElementById('sizeSlider');
-    const size = slider.value;
-    document.getElementById('sizeDisplay').textContent = size + 'px';
-    currentFormatting.size = parseInt(size);
-    
-    // Apply to selection
-    const editor = document.getElementById('diaryEditor');
-    editor.focus();
-    document.execCommand('fontSize', false, '7'); // Use command first
-    
-    // Then override with custom size
-    const fontElements = editor.querySelectorAll('font[size="7"]');
-    fontElements.forEach(el => {
-        el.removeAttribute('size');
-        el.style.fontSize = size + 'px';
-    });
-}
-
-function changeFontWeight() {
-    const slider = document.getElementById('weightSlider');
-    const editor = document.getElementById('diaryEditor');
-    const weight = slider.value;
-    editor.style.fontWeight = weight;
-    currentFormatting.weight = parseInt(weight);
-}
-
-function changeTextColor() {
-    const color = document.getElementById('colorInput').value;
-    document.execCommand('foreColor', false, color);
-    currentFormatting.color = color;
-}
-
-function toggleFormat(type) {
-    const editor = document.getElementById('diaryEditor');
-    editor.focus();
-    
-    const commands = {
-        bold: 'bold',
-        italic: 'italic',
-        underline: 'underline'
-    };
-    
-    document.execCommand(commands[type], false, null);
-    
-    // Toggle button visual state
-    const btn = document.getElementById(`${type}Btn`);
-    const isActive = document.queryCommandState(commands[type]);
-    
-    if (isActive) {
-        btn.classList.add('active');
-    } else {
-        btn.classList.remove('active');
-    }
-}
-
-function toggleHighlight() {
-    const editor = document.getElementById('diaryEditor');
-    editor.focus();
-    
-    const btn = document.getElementById('highlightBtn');
-    const selection = window.getSelection();
-    
-    if (!selection.rangeCount) return;
-    
-    if (btn.classList.contains('active')) {
-        // Remove highlight
-        document.execCommand('removeFormat', false, null);
-        btn.classList.remove('active');
-    } else {
-        // Add highlight
-        const range = selection.getRangeAt(0);
-        const span = document.createElement('span');
-        span.style.backgroundColor = '#ffeb3b';
-        span.style.padding = '2px 4px';
-        span.style.borderRadius = '3px';
-        
-        try {
-            range.surroundContents(span);
-            btn.classList.add('active');
-        } catch (e) {
-            // Fallback to execCommand
-            document.execCommand('hiliteColor', false, '#ffeb3b');
-            btn.classList.add('active');
-        }
-    }
-}
-
-// EMOJI PICKER
-function toggleEmojiPicker() {
-    const picker = document.getElementById('emojiPicker');
-    picker.classList.toggle('show');
-    if (picker.classList.contains('show')) showEmojiCategory('smileys');
-}
-
-function showEmojiCategory(category) {
-    const grid = document.getElementById('emojiGrid');
-    const emojis = emojiData[category] || emojiData.smileys;
-    grid.innerHTML = emojis.map(e => `<div class="emoji-item" onclick="insertEmoji('${e}')">${e}</div>`).join('');
-}
-
-function insertEmoji(emoji) {
-    const editor = document.getElementById('diaryEditor');
-    
-    // Ensure editor has focus
-    editor.focus();
-    
-    // Small delay to ensure focus is set
-    setTimeout(() => {
-        const selection = window.getSelection();
-        
-        // If no selection, create one at the end
-        if (selection.rangeCount === 0) {
-            const range = document.createRange();
-            range.selectNodeContents(editor);
-            range.collapse(false);
-            selection.removeAllRanges();
-            selection.addRange(range);
-        }
-        
-        const range = selection.getRangeAt(0);
-        
-        // Delete any selected content
-        range.deleteContents();
-        
-        // Create text node with emoji
-        const emojiNode = document.createTextNode(emoji);
-        range.insertNode(emojiNode);
-        
-        // Move cursor after the emoji
-        range.setStartAfter(emojiNode);
-        range.setEndAfter(emojiNode);
-        range.collapse(false);
-        
-        // Update selection
-        selection.removeAllRanges();
-        selection.addRange(range);
-        
-        // Close picker
-        document.getElementById('emojiPicker').classList.remove('show');
-        
-        // Keep focus on editor
-        editor.focus();
-    }, 10);
-}
-
-// IMAGES
-function handleImageUpload(e) {
-    const files = e.target.files;
-    const editor = document.getElementById('diaryEditor');
-    
-    Array.from(files).forEach(file => {
-        if (file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                editor.focus();
-                
-                // Create image element
-                const img = document.createElement('img');
-                img.src = event.target.result;
-                img.style.maxWidth = '250px';
-                img.style.borderRadius = '15px';
-                img.style.margin = '0.5rem';
-                img.style.boxShadow = '0 4px 15px rgba(0,0,0,0.15)';
-                img.draggable = true;
-                
-                // Insert at cursor position
-                const selection = window.getSelection();
-                if (selection.rangeCount > 0) {
-                    const range = selection.getRangeAt(0);
-                    range.insertNode(img);
-                    
-                    // Add space after image
-                    const space = document.createTextNode(' ');
-                    range.insertNode(space);
-                    
-                    // Move cursor after image
-                    range.setStartAfter(img);
-                    range.setEndAfter(img);
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                }
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-    
-    // Reset input
-    e.target.value = '';
-}
-
-// SAVE/LOAD ENTRIES
-function saveDiaryEntry() {
-    console.log('=== SAVE ENTRY STARTED ===');
-    
-    const editor = document.getElementById('diaryEditor');
-    
-    if (!editor) {
-        console.error('ERROR: Editor element not found');
-        showToast('Error: Editor not found', 'error');
-        return;
-    }
-    
-    console.log('Editor found:', editor);
-    
-    const content = editor.innerHTML.trim();
-    
-    console.log('Content length:', content.length);
-    console.log('Content preview:', content.substring(0, 100));
-    
-    if (!content || content === '<br>' || content === '') {
-        console.log('ERROR: Content is empty');
-        showToast('Please write something before saving', 'error');
-        return;
-    }
-    
-    if (!currentUser) {
-        console.log('ERROR: No current user');
-        const modal = document.getElementById('loginPromptModal');
-        if (modal) {
-            modal.classList.add('show');
-        }
-        return;
-    }
-    
-    console.log('User email:', currentUser.email);
-    
-    const storageKey = `diary_${currentUser.email}`;
-    console.log('Storage key:', storageKey);
-    
-    const entries = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    console.log('Existing entries count:', entries.length);
-    
-    // Check if editing
-    if (window.editingEntryId) {
-        console.log('Editing entry ID:', window.editingEntryId);
-        const index = entries.findIndex(e => e.id === window.editingEntryId);
-        if (index !== -1) {
-            entries[index].content = content;
-            entries[index].dateFormatted += ' (Edited)';
-            localStorage.setItem(storageKey, JSON.stringify(entries));
-            console.log('Entry updated at index:', index);
-            editor.innerHTML = '';
-            window.editingEntryId = null;
-            showToast('Entry updated!', 'success');
-            return;
-        }
-    }
-    
-    // Create new entry
-    const newEntry = {
-        id: Date.now(),
-        content: content,
-        date: new Date().toISOString(),
-        dateFormatted: new Date().toLocaleString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        })
-    };
-    
-    console.log('New entry created:', newEntry);
-    
-    entries.unshift(newEntry);
-    
-    try {
-        localStorage.setItem(storageKey, JSON.stringify(entries));
-        console.log('Successfully saved to localStorage');
-        console.log('New total entries:', entries.length);
-    } catch (e) {
-        console.error('ERROR saving to localStorage:', e);
-        showToast('Error saving entry', 'error');
-        return;
-    }
-    
-    // Verify it was saved
-    const verify = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    console.log('Verification - entries in storage:', verify.length);
-    
-    editor.innerHTML = '';
-    
-    showToast('Entry saved successfully!', 'success');
-    nodCompanion();
-    showCompanionMessage('diary');
-    
-    console.log('=== SAVE ENTRY COMPLETED ===');
-}
-function loadDiaryEntries() {
-    const viewTab = document.getElementById('viewTab');
-    if (!viewTab) return;
-    
-    if (!currentUser) {
-        viewTab.innerHTML = `
-            <div class="empty-state">
-                <h3>Login to View Entries</h3>
-                <p>Sign in to save and view your diary entries.</p>
-                <button class="btn" onclick="location.href='auth.html'">Login</button>
-            </div>
-        `;
-        return;
-    }
-    
-    const entries = JSON.parse(localStorage.getItem(`diary_${currentUser.email}`) || '[]');
-
-    const usage = checkStorageUsage();
-    
-    // Build HTML
-    viewTab.innerHTML = `
-        <!-- Create Diary Section -->
-        <div style="margin-bottom: 3rem;">
-            <div class="create-diary-section">
-                <h3>Create a New Diary Book</h3>
-                <p style="text-align: center; color: var(--text-dark); opacity: 0.8; margin-bottom: 1.5rem;">Compile your entries from a specific time period into a beautiful diary book</p>
-                
-                <div class="diary-form">
-                    <input type="text" id="diaryName" placeholder="Diary Name (e.g., 'Summer Memories 2024')" style="font-size: 1.05rem;">
-                    
-                    <div class="diary-form-row">
-                        <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-dark);">Start Date</label>
-                            <input type="date" id="diaryStartDate">
-                        </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-dark);">End Date</label>
-                            <input type="date" id="diaryEndDate">
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label style="display: block; margin-bottom: 0.8rem; font-weight: 500; color: var(--text-dark);">Choose Diary Color:</label>
-                        <div class="color-picker-group" id="colorPickerGroup">
-                            <div class="color-option selected" data-color="#f5dcd4" style="background: #f5dcd4;" onclick="selectDiaryColor('#f5dcd4', this)"></div>
-                            <div class="color-option" data-color="#ffd4e5" style="background: #ffd4e5;" onclick="selectDiaryColor('#ffd4e5', this)"></div>
-                            <div class="color-option" data-color="#e4d4f4" style="background: #e4d4f4;" onclick="selectDiaryColor('#e4d4f4', this)"></div>
-                            <div class="color-option" data-color="#d4e4f4" style="background: #d4e4f4;" onclick="selectDiaryColor('#d4e4f4', this)"></div>
-                            <div class="color-option" data-color="#d4f4e4" style="background: #d4f4e4;" onclick="selectDiaryColor('#d4f4e4', this)"></div>
-                            <div class="color-option" data-color="#f4f4d4" style="background: #f4f4d4;" onclick="selectDiaryColor('#f4f4d4', this)"></div>
-                            <div class="color-option" data-color="#fcf9e8" style="background: #fcf9e8;" onclick="selectDiaryColor('#fcf9e8', this)"></div>
-                            <div class="color-option" data-color="#e8d5c4" style="background: #e8d5c4;" onclick="selectDiaryColor('#e8d5c4', this)"></div>
-                            <div class="color-option" data-color="#d4c0b8" style="background: #d4c0b8;" onclick="selectDiaryColor('#d4c0b8', this)"></div>
-                            <div class="color-option" data-color="#f4d4d4" style="background: #f4d4d4;" onclick="selectDiaryColor('#f4d4d4', this)"></div>
-                            <div class="color-option" data-color="#d4d4f4" style="background: #d4d4f4;" onclick="selectDiaryColor('#d4d4f4', this)"></div>
-                            <div class="color-option" data-color="#e8e4d8" style="background: #e8e4d8;" onclick="selectDiaryColor('#e8e4d8', this)"></div>
-                        </div>
-                    </div>
-                    
-                    <button class="btn" onclick="createDiary()" style="margin-top: 1.5rem; width: 100%; font-size: 1.1rem;">Create Diary Book</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- My Diary Books -->
-        <div style="margin-bottom: 3rem;">
-            <h3 style="font-family: 'Playfair Display', serif; font-size: 2.2rem; color: var(--brown); margin-bottom: 2rem; text-align: center;">📖 My Diary Books</h3>
-            <div id="diariesPanel" class="diaries-panel"></div>
-        </div>
-
-        <!-- All Entries -->
-        <div>
-            <h3 style="font-family: 'Playfair Display', serif; font-size: 2.2rem; color: var(--brown); margin-bottom: 2rem; text-align: center;">📝 All Entries</h3>
-            <div id="allEntriesList" class="entries-container">
-                ${entries.length === 0 ? `
-                    <div class="empty-state">
-                        <h3>No entries yet</h3>
-                        <p>Start writing your first entry!</p>
-                    </div>
-                ` : entries.map(entry => `
-                    <div class="entry-card">
-                        <div class="entry-card-header">
-                            <div class="entry-date">${entry.dateFormatted}</div>
-                            <div class="entry-actions">
-                                <button onclick="editEntry(${entry.id})">Edit</button>
-                                <button onclick="showDeleteModal(${entry.id})">Delete</button>
-                            </div>
-                        </div>
-                        <div class="entry-content">${entry.content}</div>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-    
-    // Load diaries after DOM is ready
-    setTimeout(() => {
-        loadDiaries();
-        // Reset color selection to default
-        selectedDiaryColor = '#f5dcd4';
-    }, 100);
-}
-
-
-function editEntry(entryId) {
-    const entries = JSON.parse(localStorage.getItem(`diary_${currentUser.email}`) || '[]');
-    const entry = entries.find(e => e.id === entryId);
-    if (!entry) return;
-    
-    switchDiaryTab('write');
-    document.getElementById('diaryEditor').innerHTML = entry.content;
-    window.editingEntryId = entryId;
-    showToast('Editing entry', 'info');
-}
-
-function showDeleteModal(id) {
-    entryToDelete = id;
-    document.getElementById('deleteModal').classList.add('show');
-}
-
-function cancelDelete() {
-    entryToDelete = null;
-    document.getElementById('deleteModal').classList.remove('show');
-}
-
-function confirmDelete() {
-    if (!entryToDelete) return;
-    const entries = JSON.parse(localStorage.getItem(`diary_${currentUser.email}`) || '[]');
-    const filtered = entries.filter(e => e.id !== entryToDelete);
-    localStorage.setItem(`diary_${currentUser.email}`, JSON.stringify(filtered));
-    loadDiaryEntries();
-    showToast('Entry deleted', 'success');
-    cancelDelete();
-}
 
 function closeLoginPrompt() {
     document.getElementById('loginPromptModal').classList.remove('show');
@@ -1291,7 +800,7 @@ function selectDiaryColor(color, element) {
 function createDiary() {
     console.log('=== CREATE DIARY STARTED ===');
     
-    if (!currentUser) {
+    if (!appState.currentUser) {
         showToast('Please login to create diaries', 'error');
         return;
     }
@@ -1328,7 +837,7 @@ function createDiary() {
     }
     
     // Get all entries
-    const storageKey = `diary_${currentUser.email}`;
+    const storageKey = `diary_${appState.currentUser.email}`;
     const allEntries = JSON.parse(localStorage.getItem(storageKey) || '[]');
     
     // Filter entries and store ONLY IDs (not full content)
@@ -1349,7 +858,7 @@ function createDiary() {
     }
     
     // Get existing diaries
-    const diariesKey = `diaries_${currentUser.email}`;
+    const diariesKey = `diaries_${appState.currentUser.email}`;
     const diaries = JSON.parse(localStorage.getItem(diariesKey) || '[]');
     
     // Create new diary with ONLY entry IDs
@@ -1398,9 +907,9 @@ function createDiary() {
 
 
 function loadDiaries() {
-    if (!currentUser) return;
+    if (!appState.currentUser) return;
     
-    const storageKey = `diaries_${currentUser.email}`;
+    const storageKey = `diaries_${appState.currentUser.email}`;
     const diaries = JSON.parse(localStorage.getItem(storageKey) || '[]');
     
     console.log('Loading', diaries.length, 'diaries');
@@ -1439,7 +948,7 @@ function deleteDiary(diaryId) {
         return;
     }
     
-    const diariesKey = `diaries_${currentUser.email}`;
+    const diariesKey = `diaries_${appState.currentUser.email}`;
     const diaries = JSON.parse(localStorage.getItem(diariesKey) || '[]');
     
     console.log('Diaries before delete:', diaries.length);
@@ -1470,7 +979,7 @@ let currentDiaryColor = '#f5dcd4';
 function openDiaryReader(diaryId) {
     console.log('Opening diary:', diaryId);
     
-    const diariesKey = `diaries_${currentUser.email}`;
+    const diariesKey = `diaries_${appState.currentUser.email}`;
     const diaries = JSON.parse(localStorage.getItem(diariesKey) || '[]');
     const diary = diaries.find(d => d.id === diaryId);
     
@@ -1481,7 +990,7 @@ function openDiaryReader(diaryId) {
     }
     
     // Get actual entries from storage using IDs
-    const entriesKey = `diary_${currentUser.email}`;
+    const entriesKey = `diary_${appState.currentUser.email}`;
     const allEntries = JSON.parse(localStorage.getItem(entriesKey) || '[]');
     
     // Load full entries by matching IDs
